@@ -3,7 +3,11 @@ import { confirmDelete } from '../../lib/confirmDelete'
 import { useCollection } from '../../lib/useCollection'
 
 const today = () => new Date().toISOString().slice(0, 10)
-const emptyForm = { name: '', calories: '', protein: '', carbs: '', fat: '', date: today() }
+const emptyForm = { name: '', calories: '', protein: '', carbs: '', fat: '', date: today(), autoCalc: true }
+
+function caloriesFromMacros(protein, carbs, fat) {
+  return Math.round((Number(protein) || 0) * 4 + (Number(carbs) || 0) * 4 + (Number(fat) || 0) * 9)
+}
 
 export default function NutritionView() {
   const { items, add, update, remove } = useCollection('meals')
@@ -15,7 +19,7 @@ export default function NutritionView() {
     if (!form.name.trim()) return
     const payload = {
       name: form.name.trim(),
-      calories: Number(form.calories) || 0,
+      calories: form.autoCalc ? caloriesFromMacros(form.protein, form.carbs, form.fat) : Number(form.calories) || 0,
       protein: Number(form.protein) || 0,
       carbs: Number(form.carbs) || 0,
       fat: Number(form.fat) || 0,
@@ -38,6 +42,7 @@ export default function NutritionView() {
       carbs: String(m.carbs || 0),
       fat: String(m.fat || 0),
       date: m.date,
+      autoCalc: false,
     })
     setEditingId(m.id)
   }
@@ -69,6 +74,7 @@ export default function NutritionView() {
       protein: String(m.protein),
       carbs: String(m.carbs || 0),
       fat: String(m.fat || 0),
+      autoCalc: false,
     })
   }
 
@@ -101,7 +107,8 @@ export default function NutritionView() {
             type="number"
             min="0"
             placeholder="Kalorien"
-            value={form.calories}
+            value={form.autoCalc ? caloriesFromMacros(form.protein, form.carbs, form.fat) : form.calories}
+            disabled={form.autoCalc}
             onChange={(e) => setForm({ ...form, calories: e.target.value })}
           />
           <input
@@ -128,6 +135,14 @@ export default function NutritionView() {
             onChange={(e) => setForm({ ...form, fat: e.target.value })}
           />
         </div>
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={form.autoCalc}
+            onChange={(e) => setForm({ ...form, autoCalc: e.target.checked })}
+          />
+          <span>Kalorien automatisch aus Makros berechnen (4 kcal/g Protein & KH, 9 kcal/g Fett)</span>
+        </label>
         <input
           type="date"
           value={form.date}

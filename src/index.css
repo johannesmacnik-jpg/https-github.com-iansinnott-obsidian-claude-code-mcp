@@ -129,6 +129,11 @@ select {
   width: 100%;
 }
 
+input:disabled {
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
 .form button[type='submit'] {
   background: var(--accent);
   color: #0f172a;
