@@ -1,6 +1,6 @@
 import { Suspense, lazy, useState } from 'react'
 import { confirmDelete } from '../../lib/confirmDelete'
-import { lookupProductByBarcode } from '../../lib/openFoodFacts'
+import { lookupProductByBarcode, searchProductsByName } from '../../lib/openFoodFacts'
 import { ACTIVITY_LEVELS, GOALS, computeTarget, computeTdee } from '../../lib/tdee'
 import { useCollection } from '../../lib/useCollection'
 import { useGoals } from '../../lib/useGoals'
@@ -31,12 +31,46 @@ export default function NutritionView() {
   const [lookupError, setLookupError] = useState(null)
   const [lookupResult, setLookupResult] = useState(null)
   const [amountGrams, setAmountGrams] = useState('100')
+  const [nameQuery, setNameQuery] = useState('')
+  const [nameSearchResults, setNameSearchResults] = useState(null)
+  const [nameSearchLoading, setNameSearchLoading] = useState(false)
+  const [nameSearchError, setNameSearchError] = useState(null)
+
+  async function runNameSearch() {
+    const query = nameQuery.trim()
+    if (!query) return
+    setNameSearchLoading(true)
+    setNameSearchError(null)
+    setNameSearchResults(null)
+    setLookupResult(null)
+    setLookupError(null)
+    try {
+      const results = await searchProductsByName(query)
+      if (results.length === 0) {
+        setNameSearchError('Nichts gefunden. Probier einen kürzeren/einfacheren Suchbegriff oder trag es manuell ein.')
+      } else {
+        setNameSearchResults(results)
+      }
+    } catch {
+      setNameSearchError('Suche fehlgeschlagen – prüf deine Internetverbindung.')
+    } finally {
+      setNameSearchLoading(false)
+    }
+  }
+
+  function selectNameSearchResult(product) {
+    setLookupResult(product)
+    setAmountGrams('100')
+    setNameSearchResults(null)
+  }
 
   async function runLookup(barcode) {
     setShowScanner(false)
     setLookupLoading(true)
     setLookupError(null)
     setLookupResult(null)
+    setNameSearchResults(null)
+    setNameSearchError(null)
     try {
       const product = await lookupProductByBarcode(barcode)
       if (!product) {
@@ -66,6 +100,7 @@ export default function NutritionView() {
     })
     setLookupResult(null)
     setManualBarcode('')
+    setNameQuery('')
   }
 
   const hasTdeeInputs = tdee.weight && tdee.height && tdee.age
@@ -164,7 +199,7 @@ export default function NutritionView() {
             📷 Barcode scannen
           </button>
         </div>
-        <div className="form-row">
+        <div className="form-row" style={{ marginBottom: '0.5rem' }}>
           <input
             type="text"
             inputMode="numeric"
@@ -181,11 +216,40 @@ export default function NutritionView() {
           </button>
         </div>
 
-        {lookupLoading && <p className="empty" style={{ marginTop: '0.6rem' }}>Suche Produkt …</p>}
-        {lookupError && (
+        <div className="form-row">
+          <input
+            type="text"
+            placeholder="oder Name eingeben (z.B. Weißwurst)"
+            value={nameQuery}
+            onChange={(e) => setNameQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && runNameSearch()}
+          />
+          <button type="button" className="secondary-btn" onClick={runNameSearch}>
+            🔍 Suchen
+          </button>
+        </div>
+
+        {(lookupLoading || nameSearchLoading) && (
+          <p className="empty" style={{ marginTop: '0.6rem' }}>Suche Produkt …</p>
+        )}
+        {(lookupError || nameSearchError) && (
           <p className="empty" style={{ marginTop: '0.6rem', color: 'var(--danger)' }}>
-            {lookupError}
+            {lookupError || nameSearchError}
           </p>
+        )}
+        {nameSearchResults && (
+          <ul className="list" style={{ marginTop: '0.6rem' }}>
+            {nameSearchResults.map((r, i) => (
+              <li key={i} className="card list-item" onClick={() => selectNameSearchResult(r)} style={{ cursor: 'pointer' }}>
+                <div>
+                  <strong>{r.name}</strong>
+                  <div className="meta">
+                    pro 100g: {r.kcal100} kcal · {r.protein100}g Protein
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
         {lookupResult && (
           <div className="card lookup-card" style={{ marginTop: '0.6rem' }}>
