@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import BarChart from '../../components/charts/BarChart'
 import LineChart from '../../components/charts/LineChart'
+import { confirmDelete } from '../../lib/confirmDelete'
 import { formatShort, lastNDays, lastNWeeks } from '../../lib/dateBuckets'
 import { useCollection } from '../../lib/useCollection'
 
@@ -137,7 +138,7 @@ export default function ProgressView() {
                   className="icon-btn"
                   onClick={(e) => {
                     e.stopPropagation()
-                    removeBodyMetric(m.id)
+                    if (confirmDelete(`${m.weight} kg`)) removeBodyMetric(m.id)
                   }}
                   aria-label="Löschen"
                 >

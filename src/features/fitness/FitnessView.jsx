@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmDelete } from '../../lib/confirmDelete'
 import { formatDuration } from '../../lib/format'
 import { useCollection } from '../../lib/useCollection'
 
@@ -260,7 +261,7 @@ export default function FitnessView() {
               className="icon-btn"
               onClick={(e) => {
                 e.stopPropagation()
-                remove(w.id)
+                if (confirmDelete(w.exercise)) remove(w.id)
               }}
               aria-label="Löschen"
             >

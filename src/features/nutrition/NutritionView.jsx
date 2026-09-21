@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmDelete } from '../../lib/confirmDelete'
 import { useCollection } from '../../lib/useCollection'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -158,7 +159,7 @@ export default function NutritionView() {
               className="icon-btn"
               onClick={(e) => {
                 e.stopPropagation()
-                remove(m.id)
+                if (confirmDelete(m.name)) remove(m.id)
               }}
               aria-label="Löschen"
             >

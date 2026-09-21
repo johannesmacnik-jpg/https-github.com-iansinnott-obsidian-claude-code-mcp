@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { confirmDelete } from '../../lib/confirmDelete'
 import { getPermission, requestPermission } from '../../lib/notifications'
 import { useCollection } from '../../lib/useCollection'
 
@@ -138,7 +139,13 @@ export default function StudyView() {
                   </div>
                 </div>
               </label>
-              <button className="icon-btn" onClick={() => remove(t.id)} aria-label="Löschen">
+              <button
+                className="icon-btn"
+                onClick={() => {
+                  if (confirmDelete(t.title)) remove(t.id)
+                }}
+                aria-label="Löschen"
+              >
                 ✕
               </button>
             </li>
