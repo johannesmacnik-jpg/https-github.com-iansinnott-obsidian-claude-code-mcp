@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { estimateCaloriesBurned } from '../../lib/calorieBurn'
 import { confirmDelete } from '../../lib/confirmDelete'
 import { formatDuration } from '../../lib/format'
 import { useCollection } from '../../lib/useCollection'
+import { useTdeeInputs } from '../../lib/useTdeeInputs'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const SPORTS = ['Fußball', 'Laufen', 'Radfahren', 'Schwimmen', 'Sonstiges']
@@ -21,9 +23,14 @@ const emptyForm = {
 
 export default function FitnessView() {
   const { items, add, update, remove } = useCollection('workouts')
+  const { items: bodyMetrics } = useCollection('bodyMetrics')
+  const { values: tdee } = useTdeeInputs()
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [historyFilter, setHistoryFilter] = useState('all')
+
+  const latestWeight =
+    [...bodyMetrics].sort((a, b) => b.date.localeCompare(a.date))[0]?.weight || Number(tdee.weight) || null
 
   const exerciseNames = []
   const seenNames = new Set()
@@ -257,6 +264,12 @@ export default function FitnessView() {
       )}
 
       <h2>Verlauf</h2>
+      {!latestWeight && items.length > 0 && (
+        <p className="empty" style={{ marginBottom: '0.6rem' }}>
+          Trag dein Gewicht ein (Fortschritt-Tab oder Kalorienbedarf-Rechner), um eine Kalorienschätzung pro Training
+          zu sehen.
+        </p>
+      )}
       {exerciseNames.length > 1 && (
         <select
           value={historyFilter}
@@ -276,13 +289,16 @@ export default function FitnessView() {
         {items.length > 0 && filteredItems.length === 0 && (
           <p className="empty">Keine Einträge für diese Übung.</p>
         )}
-        {filteredItems.map((w) => (
+        {filteredItems.map((w) => {
+          const kcalBurned = estimateCaloriesBurned(w, latestWeight)
+          return (
           <li key={w.id} className="card list-item">
             <div onClick={() => startEdit(w)} style={{ cursor: 'pointer', flex: 1 }}>
               <strong>{w.exercise}</strong>
               <div className="meta">
                 {w.date} ·{' '}
                 {w.type === 'ausdauer' ? formatDuration(w.durationMin) : `${w.sets}×${w.reps} @ ${w.weight}kg`}
+                {kcalBurned != null ? ` · ~${kcalBurned} kcal verbrannt` : ''}
               </div>
             </div>
             <button
@@ -296,7 +312,8 @@ export default function FitnessView() {
               ✕
             </button>
           </li>
-        ))}
+          )
+        })}
       </ul>
     </section>
   )
