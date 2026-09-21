@@ -3,6 +3,7 @@ import TabBar from './components/TabBar'
 import DashboardView from './features/dashboard/DashboardView'
 import FitnessView from './features/fitness/FitnessView'
 import NutritionView from './features/nutrition/NutritionView'
+import ProgressView from './features/progress/ProgressView'
 import StudyView from './features/study/StudyView'
 
 const VIEWS = {
@@ -10,6 +11,7 @@ const VIEWS = {
   fitness: FitnessView,
   nutrition: NutritionView,
   study: StudyView,
+  progress: ProgressView,
 }
 
 export default function App() {

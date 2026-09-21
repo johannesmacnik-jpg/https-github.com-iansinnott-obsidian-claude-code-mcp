@@ -3,6 +3,7 @@ const TABS = [
   { id: 'fitness', label: 'Fitness', icon: '💪' },
   { id: 'nutrition', label: 'Ernährung', icon: '🍎' },
   { id: 'study', label: 'Studium', icon: '📚' },
+  { id: 'progress', label: 'Fortschritt', icon: '📈' },
 ]
 
 export default function TabBar({ active, onChange }) {
