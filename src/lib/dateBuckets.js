@@ -36,3 +36,21 @@ export function lastNWeeks(n) {
   }
   return weeks
 }
+
+// Zählt aufeinanderfolgende Tage mit mindestens einem Eintrag, rückwärts
+// von heute. Heute zählt nicht als "gebrochen", solange gestern noch
+// vorhanden ist - so bricht die Serie nicht einfach weil du die App noch
+// nicht geöffnet hast.
+export function computeStreak(dates) {
+  const dateSet = new Set(dates)
+  let cursor = daysAgo(0)
+  if (!dateSet.has(isoDate(cursor))) {
+    cursor = daysAgo(1)
+  }
+  let streak = 0
+  while (dateSet.has(isoDate(cursor))) {
+    streak++
+    cursor.setDate(cursor.getDate() - 1)
+  }
+  return streak
+}

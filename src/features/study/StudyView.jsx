@@ -4,17 +4,53 @@ import { useCollection } from '../../lib/useCollection'
 
 const TYPES = ['Prüfung', 'Abgabe', 'Lernsession', 'Sonstiges']
 const today = () => new Date().toISOString().slice(0, 10)
+const emptyForm = { title: '', type: TYPES[0], dueDate: today(), recurring: false }
+
+function addDays(dateStr, days) {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + days)
+  return d.toISOString().slice(0, 10)
+}
 
 export default function StudyView() {
   const { items, add, update, remove } = useCollection('tasks')
-  const [form, setForm] = useState({ title: '', type: TYPES[0], dueDate: today() })
+  const [form, setForm] = useState(emptyForm)
+  const [editingId, setEditingId] = useState(null)
   const [notifPerm, setNotifPerm] = useState(getPermission())
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.title.trim()) return
-    add({ title: form.title.trim(), type: form.type, dueDate: form.dueDate, done: false })
-    setForm({ title: '', type: TYPES[0], dueDate: today() })
+    const payload = {
+      title: form.title.trim(),
+      type: form.type,
+      dueDate: form.dueDate,
+      recurring: form.recurring,
+    }
+    if (editingId) {
+      update(editingId, payload)
+      setEditingId(null)
+    } else {
+      add({ ...payload, done: false })
+    }
+    setForm(emptyForm)
+  }
+
+  function startEdit(t) {
+    setForm({ title: t.title, type: t.type, dueDate: t.dueDate, recurring: !!t.recurring })
+    setEditingId(t.id)
+  }
+
+  function cancelEdit() {
+    setForm(emptyForm)
+    setEditingId(null)
+  }
+
+  function handleDoneChange(t, done) {
+    update(t.id, { done })
+    if (done && t.recurring) {
+      add({ title: t.title, type: t.type, dueDate: addDays(t.dueDate, 7), recurring: true, done: false })
+    }
   }
 
   const sorted = [...items].sort((a, b) => {
@@ -63,7 +99,22 @@ export default function StudyView() {
             onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
           />
         </div>
-        <button type="submit">Erinnerung hinzufügen</button>
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={form.recurring}
+            onChange={(e) => setForm({ ...form, recurring: e.target.checked })}
+          />
+          <span>Wiederholt sich wöchentlich</span>
+        </label>
+        <div className="form-row">
+          <button type="submit">{editingId ? 'Erinnerung aktualisieren' : 'Erinnerung hinzufügen'}</button>
+          {editingId && (
+            <button type="button" className="secondary-btn" onClick={cancelEdit}>
+              Abbrechen
+            </button>
+          )}
+        </div>
       </form>
 
       <ul className="list">
@@ -76,13 +127,14 @@ export default function StudyView() {
                 <input
                   type="checkbox"
                   checked={t.done}
-                  onChange={(e) => update(t.id, { done: e.target.checked })}
+                  onChange={(e) => handleDoneChange(t, e.target.checked)}
                 />
-                <div>
+                <div onClick={() => startEdit(t)} style={{ cursor: 'pointer' }}>
                   <strong>{t.title}</strong>
                   <div className={`meta ${overdue ? 'overdue' : ''}`}>
                     {t.type} · fällig {t.dueDate}
                     {overdue ? ' · überfällig' : ''}
+                    {t.recurring ? ' · 🔁 wöchentlich' : ''}
                   </div>
                 </div>
               </label>

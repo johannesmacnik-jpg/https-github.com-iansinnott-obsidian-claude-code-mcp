@@ -1,9 +1,10 @@
 import { useRef } from 'react'
 import ProgressBar from '../../components/ProgressBar'
 import { exportBackup, importBackup } from '../../lib/backup'
-import { lastNDays } from '../../lib/dateBuckets'
+import { computeStreak, lastNDays } from '../../lib/dateBuckets'
 import { useCollection } from '../../lib/useCollection'
 import { useGoals } from '../../lib/useGoals'
+import { useTheme } from '../../lib/useTheme'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -12,6 +13,7 @@ export default function DashboardView({ onNavigate }) {
   const { items: meals } = useCollection('meals')
   const { items: tasks } = useCollection('tasks')
   const { goals, setGoals } = useGoals()
+  const { theme, setTheme } = useTheme()
   const fileInputRef = useRef(null)
 
   const openTasks = tasks
@@ -36,6 +38,7 @@ export default function DashboardView({ onNavigate }) {
   )
   const avgCaloriesPerDay = Math.round(caloriesThisWeek / 7)
   const openTasksCount = tasks.filter((t) => !t.done).length
+  const streak = computeStreak(workouts.map((w) => w.date))
 
   function handleImportClick() {
     fileInputRef.current?.click()
@@ -60,6 +63,10 @@ export default function DashboardView({ onNavigate }) {
         <button className="card stat" onClick={() => onNavigate('fitness')}>
           <span className="stat-label">Workouts diese Woche</span>
           <span className="stat-value">{workoutsThisWeek}</span>
+        </button>
+        <button className="card stat" onClick={() => onNavigate('fitness')}>
+          <span className="stat-label">🔥 Trainings-Streak</span>
+          <span className="stat-value">{streak} {streak === 1 ? 'Tag' : 'Tage'}</span>
         </button>
         <button className="card stat" onClick={() => onNavigate('study')}>
           <span className="stat-label">Offene Aufgaben</span>
@@ -126,6 +133,16 @@ export default function DashboardView({ onNavigate }) {
           )
         })}
       </ul>
+
+      <h2>Darstellung</h2>
+      <div className="segmented" style={{ marginBottom: '0.6rem' }}>
+        <button type="button" className={theme === 'dark' ? 'active' : ''} onClick={() => setTheme('dark')}>
+          Dunkel
+        </button>
+        <button type="button" className={theme === 'light' ? 'active' : ''} onClick={() => setTheme('light')}>
+          Hell
+        </button>
+      </div>
 
       <h2>Daten sichern</h2>
       <div className="card">

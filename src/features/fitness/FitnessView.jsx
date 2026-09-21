@@ -19,8 +19,9 @@ const emptyForm = {
 }
 
 export default function FitnessView() {
-  const { items, add, remove } = useCollection('workouts')
+  const { items, add, update, remove } = useCollection('workouts')
   const [form, setForm] = useState(emptyForm)
+  const [editingId, setEditingId] = useState(null)
 
   const recentExercises = []
   const seenExercises = new Set()
@@ -33,6 +34,17 @@ export default function FitnessView() {
     if (recentExercises.length >= 5) break
   }
 
+  const personalBests = {}
+  for (const w of items) {
+    if (w.type === 'ausdauer') continue
+    if (!personalBests[w.exercise] || w.weight > personalBests[w.exercise].weight) {
+      personalBests[w.exercise] = w
+    }
+  }
+  const bestsList = Object.values(personalBests)
+    .filter((w) => w.weight > 0)
+    .sort((a, b) => b.date.localeCompare(a.date))
+
   function applyRecentExercise(w) {
     setForm({
       ...form,
@@ -44,32 +56,66 @@ export default function FitnessView() {
     })
   }
 
+  function startEdit(w) {
+    if (w.type === 'ausdauer') {
+      const isKnownSport = SPORTS.slice(0, -1).includes(w.exercise)
+      setForm({
+        ...emptyForm,
+        type: 'ausdauer',
+        sport: isKnownSport ? w.exercise : 'Sonstiges',
+        sportCustom: isKnownSport ? '' : w.exercise,
+        hours: String(Math.floor(w.durationMin / 60)),
+        minutes: String(w.durationMin % 60),
+        date: w.date,
+      })
+    } else {
+      setForm({
+        ...emptyForm,
+        type: 'kraft',
+        exercise: w.exercise,
+        sets: String(w.sets),
+        reps: String(w.reps),
+        weight: String(w.weight),
+        date: w.date,
+      })
+    }
+    setEditingId(w.id)
+  }
+
+  function cancelEdit() {
+    setForm(emptyForm)
+    setEditingId(null)
+  }
+
   function handleSubmit(e) {
     e.preventDefault()
 
+    let payload
     if (form.type === 'kraft') {
       if (!form.exercise.trim()) return
-      add({
+      payload = {
         type: 'kraft',
         exercise: form.exercise.trim(),
         sets: Number(form.sets) || 0,
         reps: Number(form.reps) || 0,
         weight: Number(form.weight) || 0,
         date: form.date,
-      })
+      }
     } else {
       const exercise = form.sport === 'Sonstiges' ? form.sportCustom.trim() : form.sport
       const durationMin = (Number(form.hours) || 0) * 60 + (Number(form.minutes) || 0)
       if (!exercise || durationMin <= 0) return
-      add({
-        type: 'ausdauer',
-        exercise,
-        durationMin,
-        date: form.date,
-      })
+      payload = { type: 'ausdauer', exercise, durationMin, date: form.date }
     }
 
-    setForm({ ...emptyForm, type: form.type, date: today() })
+    if (editingId) {
+      update(editingId, payload)
+      setEditingId(null)
+      setForm(emptyForm)
+    } else {
+      add(payload)
+      setForm({ ...emptyForm, type: form.type, date: today() })
+    }
   }
 
   return (
@@ -170,26 +216,54 @@ export default function FitnessView() {
           </>
         )}
 
-        <input
-          type="date"
-          value={form.date}
-          onChange={(e) => setForm({ ...form, date: e.target.value })}
-        />
-        <button type="submit">Workout eintragen</button>
+        <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+
+        <div className="form-row">
+          <button type="submit">{editingId ? 'Workout aktualisieren' : 'Workout eintragen'}</button>
+          {editingId && (
+            <button type="button" className="secondary-btn" onClick={cancelEdit}>
+              Abbrechen
+            </button>
+          )}
+        </div>
       </form>
 
+      {bestsList.length > 0 && (
+        <>
+          <h2>Bestleistungen</h2>
+          <ul className="list">
+            {bestsList.map((w) => (
+              <li key={w.exercise} className="card list-item">
+                <div>
+                  <strong>{w.exercise}</strong>
+                  <div className="meta">🏆 {w.weight}kg · {w.sets}×{w.reps} · {w.date}</div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <h2>Verlauf</h2>
       <ul className="list">
         {items.length === 0 && <p className="empty">Noch keine Workouts eingetragen.</p>}
         {items.map((w) => (
           <li key={w.id} className="card list-item">
-            <div>
+            <div onClick={() => startEdit(w)} style={{ cursor: 'pointer', flex: 1 }}>
               <strong>{w.exercise}</strong>
               <div className="meta">
                 {w.date} ·{' '}
                 {w.type === 'ausdauer' ? formatDuration(w.durationMin) : `${w.sets}×${w.reps} @ ${w.weight}kg`}
               </div>
             </div>
-            <button className="icon-btn" onClick={() => remove(w.id)} aria-label="Löschen">
+            <button
+              className="icon-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                remove(w.id)
+              }}
+              aria-label="Löschen"
+            >
               ✕
             </button>
           </li>

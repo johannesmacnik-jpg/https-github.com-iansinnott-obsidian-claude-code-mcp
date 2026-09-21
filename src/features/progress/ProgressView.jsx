@@ -15,9 +15,15 @@ const today = () => new Date().toISOString().slice(0, 10)
 export default function ProgressView() {
   const { items: meals } = useCollection('meals')
   const { items: workouts } = useCollection('workouts')
-  const { items: bodyMetrics, add: addBodyMetric, remove: removeBodyMetric } = useCollection('bodyMetrics')
+  const {
+    items: bodyMetrics,
+    add: addBodyMetric,
+    update: updateBodyMetric,
+    remove: removeBodyMetric,
+  } = useCollection('bodyMetrics')
 
   const [weightForm, setWeightForm] = useState({ date: today(), weight: '' })
+  const [editingWeightId, setEditingWeightId] = useState(null)
 
   const days = lastNDays(14)
   const caloriesData = days.map((date) => ({
@@ -39,8 +45,23 @@ export default function ProgressView() {
     e.preventDefault()
     const weight = Number(weightForm.weight)
     if (!weight) return
-    addBodyMetric({ date: weightForm.date, weight })
+    if (editingWeightId) {
+      updateBodyMetric(editingWeightId, { date: weightForm.date, weight })
+      setEditingWeightId(null)
+    } else {
+      addBodyMetric({ date: weightForm.date, weight })
+    }
     setWeightForm({ date: today(), weight: '' })
+  }
+
+  function startEditWeight(m) {
+    setWeightForm({ date: m.date, weight: String(m.weight) })
+    setEditingWeightId(m.id)
+  }
+
+  function cancelEditWeight() {
+    setWeightForm({ date: today(), weight: '' })
+    setEditingWeightId(null)
   }
 
   return (
@@ -81,7 +102,14 @@ export default function ProgressView() {
             onChange={(e) => setWeightForm({ ...weightForm, date: e.target.value })}
           />
         </div>
-        <button type="submit">Gewicht eintragen</button>
+        <div className="form-row">
+          <button type="submit">{editingWeightId ? 'Gewicht aktualisieren' : 'Gewicht eintragen'}</button>
+          {editingWeightId && (
+            <button type="button" className="secondary-btn" onClick={cancelEditWeight}>
+              Abbrechen
+            </button>
+          )}
+        </div>
       </form>
 
       {bodyMetrics.length === 0 ? (
@@ -101,11 +129,18 @@ export default function ProgressView() {
           <ul className="list">
             {recentWeightEntries.map((m) => (
               <li key={m.id} className="card list-item">
-                <div>
+                <div onClick={() => startEditWeight(m)} style={{ cursor: 'pointer', flex: 1 }}>
                   <strong>{m.weight} kg</strong>
                   <div className="meta">{m.date}</div>
                 </div>
-                <button className="icon-btn" onClick={() => removeBodyMetric(m.id)} aria-label="Löschen">
+                <button
+                  className="icon-btn"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    removeBodyMetric(m.id)
+                  }}
+                  aria-label="Löschen"
+                >
                   ✕
                 </button>
               </li>

@@ -2,26 +2,48 @@ import { useState } from 'react'
 import { useCollection } from '../../lib/useCollection'
 
 const today = () => new Date().toISOString().slice(0, 10)
+const emptyForm = { name: '', calories: '', protein: '', carbs: '', fat: '', date: today() }
 
 export default function NutritionView() {
-  const { items, add, remove } = useCollection('meals')
-  const [form, setForm] = useState({
-    name: '',
-    calories: '',
-    protein: '',
-    date: today(),
-  })
+  const { items, add, update, remove } = useCollection('meals')
+  const [form, setForm] = useState(emptyForm)
+  const [editingId, setEditingId] = useState(null)
 
   function handleSubmit(e) {
     e.preventDefault()
     if (!form.name.trim()) return
-    add({
+    const payload = {
       name: form.name.trim(),
       calories: Number(form.calories) || 0,
       protein: Number(form.protein) || 0,
+      carbs: Number(form.carbs) || 0,
+      fat: Number(form.fat) || 0,
       date: form.date,
+    }
+    if (editingId) {
+      update(editingId, payload)
+      setEditingId(null)
+    } else {
+      add(payload)
+    }
+    setForm({ ...emptyForm, date: today() })
+  }
+
+  function startEdit(m) {
+    setForm({
+      name: m.name,
+      calories: String(m.calories),
+      protein: String(m.protein),
+      carbs: String(m.carbs || 0),
+      fat: String(m.fat || 0),
+      date: m.date,
     })
-    setForm({ name: '', calories: '', protein: '', date: today() })
+    setEditingId(m.id)
+  }
+
+  function cancelEdit() {
+    setForm({ ...emptyForm, date: today() })
+    setEditingId(null)
   }
 
   const todaysTotal = items
@@ -39,7 +61,14 @@ export default function NutritionView() {
   }
 
   function applyRecentMeal(m) {
-    setForm({ ...form, name: m.name, calories: String(m.calories), protein: String(m.protein) })
+    setForm({
+      ...form,
+      name: m.name,
+      calories: String(m.calories),
+      protein: String(m.protein),
+      carbs: String(m.carbs || 0),
+      fat: String(m.fat || 0),
+    })
   }
 
   return (
@@ -82,25 +111,57 @@ export default function NutritionView() {
             onChange={(e) => setForm({ ...form, protein: e.target.value })}
           />
         </div>
+        <div className="form-row">
+          <input
+            type="number"
+            min="0"
+            placeholder="Kohlenhydrate (g)"
+            value={form.carbs}
+            onChange={(e) => setForm({ ...form, carbs: e.target.value })}
+          />
+          <input
+            type="number"
+            min="0"
+            placeholder="Fett (g)"
+            value={form.fat}
+            onChange={(e) => setForm({ ...form, fat: e.target.value })}
+          />
+        </div>
         <input
           type="date"
           value={form.date}
           onChange={(e) => setForm({ ...form, date: e.target.value })}
         />
-        <button type="submit">Mahlzeit eintragen</button>
+        <div className="form-row">
+          <button type="submit">{editingId ? 'Mahlzeit aktualisieren' : 'Mahlzeit eintragen'}</button>
+          {editingId && (
+            <button type="button" className="secondary-btn" onClick={cancelEdit}>
+              Abbrechen
+            </button>
+          )}
+        </div>
       </form>
 
       <ul className="list">
         {items.length === 0 && <p className="empty">Noch keine Mahlzeiten eingetragen.</p>}
         {items.map((m) => (
           <li key={m.id} className="card list-item">
-            <div>
+            <div onClick={() => startEdit(m)} style={{ cursor: 'pointer', flex: 1 }}>
               <strong>{m.name}</strong>
               <div className="meta">
                 {m.date} · {m.calories} kcal · {m.protein}g Protein
+                {m.carbs ? ` · ${m.carbs}g KH` : ''}
+                {m.fat ? ` · ${m.fat}g Fett` : ''}
               </div>
             </div>
-            <button className="icon-btn" onClick={() => remove(m.id)} aria-label="Löschen">
+            <button
+              className="icon-btn"
+              onClick={(e) => {
+                e.stopPropagation()
+                remove(m.id)
+              }}
+              aria-label="Löschen"
+            >
               ✕
             </button>
           </li>

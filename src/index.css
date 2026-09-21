@@ -6,8 +6,22 @@
   --text: #f1f5f9;
   --text-muted: #94a3b8;
   --accent: #14b8a6;
+  --accent-text: #14b8a6;
   --danger: #f87171;
   color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --bg: #f9f9f7;
+  --surface: #ffffff;
+  --surface-2: #f1f1ee;
+  --border: #e1e0d9;
+  --text: #0b0b0b;
+  --text-muted: #6b6a64;
+  --accent: #14b8a6;
+  --accent-text: #0f766e;
+  --danger: #dc2626;
+  color-scheme: light;
 }
 
 * {
@@ -125,6 +139,10 @@ select {
   cursor: pointer;
 }
 
+.form .form-row > button[type='submit'] {
+  flex: 1;
+}
+
 .form button[type='submit']:active {
   opacity: 0.85;
 }
@@ -229,7 +247,7 @@ select {
 }
 
 .tab-btn.active {
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .tab-icon {
