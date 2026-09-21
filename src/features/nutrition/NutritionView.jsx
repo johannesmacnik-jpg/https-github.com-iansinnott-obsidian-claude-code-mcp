@@ -28,6 +28,20 @@ export default function NutritionView() {
     .filter((m) => m.date === today())
     .reduce((sum, m) => sum + m.calories, 0)
 
+  const recentMeals = []
+  const seenMeals = new Set()
+  for (const m of items) {
+    if (!seenMeals.has(m.name)) {
+      seenMeals.add(m.name)
+      recentMeals.push(m)
+    }
+    if (recentMeals.length >= 5) break
+  }
+
+  function applyRecentMeal(m) {
+    setForm({ ...form, name: m.name, calories: String(m.calories), protein: String(m.protein) })
+  }
+
   return (
     <section className="view">
       <h1>Ernährung</h1>
@@ -38,6 +52,15 @@ export default function NutritionView() {
       </div>
 
       <form className="card form" onSubmit={handleSubmit}>
+        {recentMeals.length > 0 && (
+          <div className="chip-row">
+            {recentMeals.map((m) => (
+              <button type="button" key={m.id} className="chip" onClick={() => applyRecentMeal(m)}>
+                {m.name}
+              </button>
+            ))}
+          </div>
+        )}
         <input
           placeholder="Mahlzeit (z.B. Haferflocken mit Beeren)"
           value={form.name}

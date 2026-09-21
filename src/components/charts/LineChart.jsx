@@ -3,17 +3,33 @@ import { CHART_HEIGHT, CHART_WIDTH, PAD_LEFT, PAD_RIGHT, PAD_TOP, PLOT_HEIGHT, P
 
 // Liniendiagramm für eine einzelne Zeitreihe (z.B. Kalorien pro Tag).
 // data: [{ label, value }], älteste zuerst.
-export default function LineChart({ title, data, color, formatValue = (v) => v }) {
+// zeroBased=true (Standard) für Mengen, die bei 0 sinnvoll starten (Kalorien).
+// zeroBased=false zoomt auf den tatsächlichen Wertebereich - wichtig für Werte
+// wie Gewicht, wo die kleine Veränderung die eigentliche Geschichte ist.
+export default function LineChart({ title, data, color, formatValue = (v) => v, zeroBased = true, axisFormat }) {
   const [hoverIndex, setHoverIndex] = useState(null)
 
   const values = data.map((d) => d.value)
-  const yMax = niceCeil(Math.max(...values, 1))
+  let yMin, yMax
+  if (zeroBased) {
+    yMin = 0
+    yMax = niceCeil(Math.max(...values, 1))
+  } else {
+    const rawMin = Math.min(...values)
+    const rawMax = Math.max(...values)
+    const span = rawMax - rawMin
+    const pad = span === 0 ? Math.max(rawMax * 0.05, 1) : span * 0.25
+    yMin = rawMin - pad
+    yMax = rawMax + pad
+  }
+  const formatTick = axisFormat ?? Math.round
 
   const xFor = (i) => PAD_LEFT + (i / (data.length - 1 || 1)) * PLOT_WIDTH
-  const yFor = (v) => PAD_TOP + PLOT_HEIGHT - (v / yMax) * PLOT_HEIGHT
+  const yFor = (v) => PAD_TOP + PLOT_HEIGHT - ((v - yMin) / (yMax - yMin || 1)) * PLOT_HEIGHT
 
   const linePoints = data.map((d, i) => `${xFor(i)},${yFor(d.value)}`).join(' ')
-  const areaPoints = `${xFor(0)},${yFor(0)} ${linePoints} ${xFor(data.length - 1)},${yFor(0)}`
+  const areaBaseline = yFor(yMin)
+  const areaPoints = `${xFor(0)},${areaBaseline} ${linePoints} ${xFor(data.length - 1)},${areaBaseline}`
 
   function handlePointer(e) {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -56,7 +72,7 @@ export default function LineChart({ title, data, color, formatValue = (v) => v }
             <g key={t}>
               <line x1={PAD_LEFT} x2={CHART_WIDTH - PAD_RIGHT} y1={y} y2={y} className="chart-gridline" />
               <text x={PAD_LEFT - 5} y={y + 3} className="chart-axis-label" textAnchor="end">
-                {Math.round(yMax * t)}
+                {formatTick(yMin + (yMax - yMin) * t)}
               </text>
             </g>
           )

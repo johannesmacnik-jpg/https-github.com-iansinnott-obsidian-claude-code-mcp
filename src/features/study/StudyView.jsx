@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { getPermission, requestPermission } from '../../lib/notifications'
 import { useCollection } from '../../lib/useCollection'
 
 const TYPES = ['Prüfung', 'Abgabe', 'Lernsession', 'Sonstiges']
@@ -7,6 +8,7 @@ const today = () => new Date().toISOString().slice(0, 10)
 export default function StudyView() {
   const { items, add, update, remove } = useCollection('tasks')
   const [form, setForm] = useState({ title: '', type: TYPES[0], dueDate: today() })
+  const [notifPerm, setNotifPerm] = useState(getPermission())
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -23,6 +25,23 @@ export default function StudyView() {
   return (
     <section className="view">
       <h1>Studium</h1>
+
+      {notifPerm === 'default' && (
+        <button
+          type="button"
+          className="secondary-btn"
+          style={{ width: '100%', marginBottom: '0.6rem' }}
+          onClick={async () => setNotifPerm(await requestPermission())}
+        >
+          🔔 Erinnerung beim Öffnen der App aktivieren
+        </button>
+      )}
+      {notifPerm === 'denied' && (
+        <p className="empty" style={{ marginBottom: '0.6rem' }}>
+          Benachrichtigungen sind blockiert – in den Browser-Einstellungen für diese Seite erlauben, um erinnert zu
+          werden.
+        </p>
+      )}
 
       <form className="card form" onSubmit={handleSubmit}>
         <input

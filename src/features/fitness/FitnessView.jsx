@@ -22,6 +22,28 @@ export default function FitnessView() {
   const { items, add, remove } = useCollection('workouts')
   const [form, setForm] = useState(emptyForm)
 
+  const recentExercises = []
+  const seenExercises = new Set()
+  for (const w of items) {
+    if (w.type === 'ausdauer') continue
+    if (!seenExercises.has(w.exercise)) {
+      seenExercises.add(w.exercise)
+      recentExercises.push(w)
+    }
+    if (recentExercises.length >= 5) break
+  }
+
+  function applyRecentExercise(w) {
+    setForm({
+      ...form,
+      type: 'kraft',
+      exercise: w.exercise,
+      sets: String(w.sets),
+      reps: String(w.reps),
+      weight: String(w.weight),
+    })
+  }
+
   function handleSubmit(e) {
     e.preventDefault()
 
@@ -74,6 +96,15 @@ export default function FitnessView() {
 
         {form.type === 'kraft' ? (
           <>
+            {recentExercises.length > 0 && (
+              <div className="chip-row">
+                {recentExercises.map((w) => (
+                  <button type="button" key={w.id} className="chip" onClick={() => applyRecentExercise(w)}>
+                    {w.exercise}
+                  </button>
+                ))}
+              </div>
+            )}
             <input
               placeholder="Übung (z.B. Bankdrücken)"
               value={form.exercise}
