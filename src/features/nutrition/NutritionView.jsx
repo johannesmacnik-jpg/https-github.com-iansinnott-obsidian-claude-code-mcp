@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { Suspense, lazy, useState } from 'react'
 import { confirmDelete } from '../../lib/confirmDelete'
+import { lookupProductByBarcode } from '../../lib/openFoodFacts'
 import { ACTIVITY_LEVELS, GOALS, computeTarget, computeTdee } from '../../lib/tdee'
 import { useCollection } from '../../lib/useCollection'
 import { useGoals } from '../../lib/useGoals'
 import { useTdeeInputs } from '../../lib/useTdeeInputs'
+
+// Lazy geladen, weil html5-qrcode recht groß ist - soll nicht den
+// normalen App-Start verlangsamen, nur wenn der Scanner wirklich genutzt wird.
+const BarcodeScanner = lazy(() => import('../../components/BarcodeScanner'))
 
 const today = () => new Date().toISOString().slice(0, 10)
 const emptyForm = { name: '', calories: '', protein: '', carbs: '', fat: '', date: today(), autoCalc: true }
@@ -19,6 +24,49 @@ export default function NutritionView() {
   const { values: tdee, setValues: setTdee } = useTdeeInputs()
   const { setGoals } = useGoals()
   const [goalApplied, setGoalApplied] = useState(false)
+
+  const [showScanner, setShowScanner] = useState(false)
+  const [manualBarcode, setManualBarcode] = useState('')
+  const [lookupLoading, setLookupLoading] = useState(false)
+  const [lookupError, setLookupError] = useState(null)
+  const [lookupResult, setLookupResult] = useState(null)
+  const [amountGrams, setAmountGrams] = useState('100')
+
+  async function runLookup(barcode) {
+    setShowScanner(false)
+    setLookupLoading(true)
+    setLookupError(null)
+    setLookupResult(null)
+    try {
+      const product = await lookupProductByBarcode(barcode)
+      if (!product) {
+        setLookupError('Produkt nicht gefunden. Manuell eintragen oder anderen Barcode versuchen.')
+      } else {
+        setLookupResult(product)
+        setAmountGrams('100')
+      }
+    } catch {
+      setLookupError('Abfrage fehlgeschlagen – prüf deine Internetverbindung.')
+    } finally {
+      setLookupLoading(false)
+    }
+  }
+
+  function applyLookupResult() {
+    if (!lookupResult) return
+    const factor = (Number(amountGrams) || 0) / 100
+    setForm({
+      ...form,
+      name: lookupResult.name,
+      calories: String(Math.round(lookupResult.kcal100 * factor)),
+      protein: String(Math.round(lookupResult.protein100 * factor)),
+      carbs: String(Math.round(lookupResult.carbs100 * factor)),
+      fat: String(Math.round(lookupResult.fat100 * factor)),
+      autoCalc: false,
+    })
+    setLookupResult(null)
+    setManualBarcode('')
+  }
 
   const hasTdeeInputs = tdee.weight && tdee.height && tdee.age
   const tdeeValue = hasTdeeInputs ? Math.round(computeTdee(tdee)) : null
@@ -102,6 +150,72 @@ export default function NutritionView() {
       <div className="card stat">
         <span className="stat-label">Heute</span>
         <span className="stat-value">{todaysTotal} kcal</span>
+      </div>
+
+      {showScanner && (
+        <Suspense fallback={<div className="scanner-overlay" />}>
+          <BarcodeScanner onScan={runLookup} onClose={() => setShowScanner(false)} />
+        </Suspense>
+      )}
+
+      <div className="card">
+        <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+          <button type="button" className="secondary-btn" onClick={() => setShowScanner(true)}>
+            📷 Barcode scannen
+          </button>
+        </div>
+        <div className="form-row">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="Barcode manuell eingeben"
+            value={manualBarcode}
+            onChange={(e) => setManualBarcode(e.target.value)}
+          />
+          <button
+            type="button"
+            className="secondary-btn"
+            onClick={() => manualBarcode.trim() && runLookup(manualBarcode.trim())}
+          >
+            Suchen
+          </button>
+        </div>
+
+        {lookupLoading && <p className="empty" style={{ marginTop: '0.6rem' }}>Suche Produkt …</p>}
+        {lookupError && (
+          <p className="empty" style={{ marginTop: '0.6rem', color: 'var(--danger)' }}>
+            {lookupError}
+          </p>
+        )}
+        {lookupResult && (
+          <div className="card lookup-card" style={{ marginTop: '0.6rem' }}>
+            <strong>{lookupResult.name}</strong>
+            <div className="meta" style={{ marginBottom: '0.5rem' }}>
+              pro 100g: {lookupResult.kcal100} kcal · {lookupResult.protein100}g Protein · {lookupResult.carbs100}g KH
+              · {lookupResult.fat100}g Fett
+            </div>
+            <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+              <input
+                type="number"
+                min="0"
+                placeholder="Menge (g)"
+                value={amountGrams}
+                onChange={(e) => setAmountGrams(e.target.value)}
+              />
+            </div>
+            <div className="chart-active-value" style={{ marginBottom: '0.5rem' }}>
+              {Math.round(lookupResult.kcal100 * ((Number(amountGrams) || 0) / 100))} kcal für {amountGrams || 0}g
+            </div>
+            <button
+              type="button"
+              className="secondary-btn"
+              style={{ width: '100%', background: 'var(--accent)', color: '#0f172a', fontWeight: 600 }}
+              onClick={applyLookupResult}
+            >
+              Ins Formular übernehmen
+            </button>
+          </div>
+        )}
       </div>
 
       <form className="card form" onSubmit={handleSubmit}>
