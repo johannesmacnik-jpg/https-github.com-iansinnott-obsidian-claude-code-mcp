@@ -23,6 +23,17 @@ export default function FitnessView() {
   const { items, add, update, remove } = useCollection('workouts')
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
+  const [historyFilter, setHistoryFilter] = useState('all')
+
+  const exerciseNames = []
+  const seenNames = new Set()
+  for (const w of items) {
+    if (!seenNames.has(w.exercise)) {
+      seenNames.add(w.exercise)
+      exerciseNames.push(w.exercise)
+    }
+  }
+  const filteredItems = historyFilter === 'all' ? items : items.filter((w) => w.exercise === historyFilter)
 
   const recentExercises = []
   const seenExercises = new Set()
@@ -246,9 +257,26 @@ export default function FitnessView() {
       )}
 
       <h2>Verlauf</h2>
+      {exerciseNames.length > 1 && (
+        <select
+          value={historyFilter}
+          onChange={(e) => setHistoryFilter(e.target.value)}
+          style={{ marginBottom: '0.6rem' }}
+        >
+          <option value="all">Alle Übungen</option>
+          {exerciseNames.map((name) => (
+            <option key={name} value={name}>
+              {name}
+            </option>
+          ))}
+        </select>
+      )}
       <ul className="list">
         {items.length === 0 && <p className="empty">Noch keine Workouts eingetragen.</p>}
-        {items.map((w) => (
+        {items.length > 0 && filteredItems.length === 0 && (
+          <p className="empty">Keine Einträge für diese Übung.</p>
+        )}
+        {filteredItems.map((w) => (
           <li key={w.id} className="card list-item">
             <div onClick={() => startEdit(w)} style={{ cursor: 'pointer', flex: 1 }}>
               <strong>{w.exercise}</strong>

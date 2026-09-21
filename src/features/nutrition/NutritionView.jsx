@@ -1,6 +1,9 @@
 import { useState } from 'react'
 import { confirmDelete } from '../../lib/confirmDelete'
+import { ACTIVITY_LEVELS, GOALS, computeTarget, computeTdee } from '../../lib/tdee'
 import { useCollection } from '../../lib/useCollection'
+import { useGoals } from '../../lib/useGoals'
+import { useTdeeInputs } from '../../lib/useTdeeInputs'
 
 const today = () => new Date().toISOString().slice(0, 10)
 const emptyForm = { name: '', calories: '', protein: '', carbs: '', fat: '', date: today(), autoCalc: true }
@@ -13,6 +16,20 @@ export default function NutritionView() {
   const { items, add, update, remove } = useCollection('meals')
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
+  const { values: tdee, setValues: setTdee } = useTdeeInputs()
+  const { setGoals } = useGoals()
+  const [goalApplied, setGoalApplied] = useState(false)
+
+  const hasTdeeInputs = tdee.weight && tdee.height && tdee.age
+  const tdeeValue = hasTdeeInputs ? Math.round(computeTdee(tdee)) : null
+  const targetValue = hasTdeeInputs ? computeTarget(tdee) : null
+
+  function applyTargetAsGoal() {
+    if (targetValue == null) return
+    setGoals({ dailyCalories: targetValue })
+    setGoalApplied(true)
+    setTimeout(() => setGoalApplied(false), 2000)
+  }
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -157,6 +174,85 @@ export default function NutritionView() {
           )}
         </div>
       </form>
+
+      <h2>Kalorienbedarf-Rechner</h2>
+      <div className="card">
+        <div className="segmented" style={{ marginBottom: '0.6rem' }}>
+          <button
+            type="button"
+            className={tdee.gender === 'm' ? 'active' : ''}
+            onClick={() => setTdee({ gender: 'm' })}
+          >
+            Männlich
+          </button>
+          <button
+            type="button"
+            className={tdee.gender === 'w' ? 'active' : ''}
+            onClick={() => setTdee({ gender: 'w' })}
+          >
+            Weiblich
+          </button>
+        </div>
+        <div className="form-row" style={{ marginBottom: '0.5rem' }}>
+          <input
+            type="number"
+            min="0"
+            placeholder="Gewicht (kg)"
+            value={tdee.weight}
+            onChange={(e) => setTdee({ weight: e.target.value })}
+          />
+          <input
+            type="number"
+            min="0"
+            placeholder="Größe (cm)"
+            value={tdee.height}
+            onChange={(e) => setTdee({ height: e.target.value })}
+          />
+          <input
+            type="number"
+            min="0"
+            placeholder="Alter"
+            value={tdee.age}
+            onChange={(e) => setTdee({ age: e.target.value })}
+          />
+        </div>
+        <select
+          value={tdee.activity}
+          onChange={(e) => setTdee({ activity: e.target.value })}
+          style={{ marginBottom: '0.5rem' }}
+        >
+          {ACTIVITY_LEVELS.map((a) => (
+            <option key={a.value} value={a.value}>
+              {a.label}
+            </option>
+          ))}
+        </select>
+        <select value={tdee.goal} onChange={(e) => setTdee({ goal: e.target.value })}>
+          {GOALS.map((g) => (
+            <option key={g.value} value={g.value}>
+              {g.label}
+            </option>
+          ))}
+        </select>
+
+        {hasTdeeInputs ? (
+          <>
+            <div className="progress-caption" style={{ marginTop: '0.7rem' }}>
+              Erhaltungsbedarf (TDEE): {tdeeValue} kcal
+            </div>
+            <div className="chart-active-value" style={{ margin: '0.2rem 0 0.7rem' }}>
+              Kalorienziel: {targetValue} kcal
+            </div>
+            <button type="button" className="secondary-btn" style={{ width: '100%' }} onClick={applyTargetAsGoal}>
+              {goalApplied ? '✓ Als Tagesziel übernommen' : 'Als Tagesziel übernehmen'}
+            </button>
+          </>
+        ) : (
+          <p className="empty" style={{ marginTop: '0.7rem' }}>
+            Gewicht, Größe und Alter eintragen, um deinen Kalorienbedarf zu sehen.
+          </p>
+        )}
+      </div>
 
       <ul className="list">
         {items.length === 0 && <p className="empty">Noch keine Mahlzeiten eingetragen.</p>}

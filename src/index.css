@@ -397,3 +397,72 @@ input:disabled {
 .chip:active {
   opacity: 0.8;
 }
+
+.calendar {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.7rem;
+  margin-bottom: 0.6rem;
+}
+
+.calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.calendar-weekdays {
+  margin-bottom: 0.3rem;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.calendar-day {
+  position: relative;
+  aspect-ratio: 1;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.calendar-day:hover {
+  background: var(--surface-2);
+}
+
+.calendar-day.today {
+  font-weight: 700;
+  color: var(--accent-text);
+}
+
+.calendar-day.selected {
+  background: var(--accent);
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.calendar-dot {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.calendar-day.selected .calendar-dot {
+  background: #0f172a;
+}

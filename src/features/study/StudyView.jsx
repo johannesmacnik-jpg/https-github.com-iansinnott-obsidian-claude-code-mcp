@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import CalendarMonth from '../../components/CalendarMonth'
 import { confirmDelete } from '../../lib/confirmDelete'
 import { getPermission, requestPermission } from '../../lib/notifications'
 import { useCollection } from '../../lib/useCollection'
@@ -18,6 +19,23 @@ export default function StudyView() {
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [notifPerm, setNotifPerm] = useState(getPermission())
+  const [viewMode, setViewMode] = useState('list')
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date()
+    d.setDate(1)
+    return d
+  })
+  const [selectedDate, setSelectedDate] = useState(null)
+
+  function changeMonth(delta) {
+    setCalendarMonth((prev) => {
+      const next = new Date(prev)
+      next.setMonth(next.getMonth() + delta)
+      return next
+    })
+  }
+
+  const markedDates = new Set(items.map((t) => t.dueDate))
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -54,10 +72,12 @@ export default function StudyView() {
     }
   }
 
-  const sorted = [...items].sort((a, b) => {
-    if (a.done !== b.done) return a.done ? 1 : -1
-    return a.dueDate.localeCompare(b.dueDate)
-  })
+  const sorted = [...items]
+    .filter((t) => !selectedDate || t.dueDate === selectedDate)
+    .sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1
+      return a.dueDate.localeCompare(b.dueDate)
+    })
 
   return (
     <section className="view">
@@ -77,6 +97,37 @@ export default function StudyView() {
         <p className="empty" style={{ marginBottom: '0.6rem' }}>
           Benachrichtigungen sind blockiert – in den Browser-Einstellungen für diese Seite erlauben, um erinnert zu
           werden.
+        </p>
+      )}
+
+      <div className="segmented" style={{ marginBottom: '0.6rem' }}>
+        <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>
+          Liste
+        </button>
+        <button
+          type="button"
+          className={viewMode === 'calendar' ? 'active' : ''}
+          onClick={() => setViewMode('calendar')}
+        >
+          Kalender
+        </button>
+      </div>
+
+      {viewMode === 'calendar' && (
+        <CalendarMonth
+          month={calendarMonth}
+          markedDates={markedDates}
+          selectedDate={selectedDate}
+          onSelectDate={setSelectedDate}
+          onChangeMonth={changeMonth}
+        />
+      )}
+      {selectedDate && (
+        <p className="empty" style={{ marginBottom: '0.6rem' }}>
+          Zeige Erinnerungen für {selectedDate} ·{' '}
+          <span style={{ color: 'var(--accent-text)', cursor: 'pointer' }} onClick={() => setSelectedDate(null)}>
+            Alle anzeigen
+          </span>
         </p>
       )}
 
